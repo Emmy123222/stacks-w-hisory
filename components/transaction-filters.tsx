@@ -1,36 +1,36 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { X, Filter, SortAsc, SortDesc, ChevronDown, ChevronUp } from "lucide-react"
-import { ExportDialog } from "./export-dialog"
-import type { Transaction, FetchAddressTransactionsResponse } from "@/lib/fetch-address-transactions"
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { X, Filter, SortAsc, SortDesc, ChevronDown, ChevronUp } from "lucide-react";
+import { ExportDialog } from "./export-dialog";
+import type { Transaction, FetchAddressTransactionsResponse } from "@/lib/fetch-address-transactions";
 
 export interface TransactionFilters {
-  txType: Transaction["tx_type"] | "all"
-  status: "success" | "failed" | "all"
-  dateFrom: string
-  dateTo: string
-  minAmount: string
-  maxAmount: string
-  sortBy: "block_height" | "block_time" | "amount"
-  sortOrder: "asc" | "desc"
+  txType: Transaction["tx_type"] | "all";
+  status: "success" | "failed" | "all";
+  dateFrom: string;
+  dateTo: string;
+  minAmount: string;
+  maxAmount: string;
+  sortBy: "block_height" | "block_time" | "amount";
+  sortOrder: "asc" | "desc";
 }
 
 interface TransactionFiltersProps {
-  filters: TransactionFilters
-  onFiltersChange: (filters: TransactionFilters) => void
-  onReset: () => void
-  totalTransactions: number
-  filteredCount: number
-  allTransactions: FetchAddressTransactionsResponse["results"]
-  filteredTransactions: FetchAddressTransactionsResponse["results"]
-  address: string
+  filters: TransactionFilters;
+  onFiltersChange: (filters: TransactionFilters) => void;
+  onReset: () => void;
+  totalTransactions: number;
+  filteredCount: number;
+  allTransactions: FetchAddressTransactionsResponse["results"];
+  filteredTransactions: FetchAddressTransactionsResponse["results"];
+  address: string;
 }
 
 export function TransactionFiltersComponent({
@@ -43,11 +43,11 @@ export function TransactionFiltersComponent({
   filteredTransactions,
   address,
 }: TransactionFiltersProps) {
-  const [isExpanded, setIsExpanded] = useState(false)
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const updateFilter = (key: keyof TransactionFilters, value: string) => {
-    onFiltersChange({ ...filters, [key]: value })
-  }
+    onFiltersChange({ ...filters, [key]: value });
+  };
 
   const hasActiveFilters =
     filters.txType !== "all" ||
@@ -55,7 +55,7 @@ export function TransactionFiltersComponent({
     filters.dateFrom ||
     filters.dateTo ||
     filters.minAmount ||
-    filters.maxAmount
+    filters.maxAmount;
 
   return (
     <Card>
@@ -97,7 +97,6 @@ export function TransactionFiltersComponent({
           </div>
         </div>
       </CardHeader>
-
       {isExpanded && (
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -107,10 +106,10 @@ export function TransactionFiltersComponent({
                 Transaction Type
               </Label>
               <Select value={filters.txType} onValueChange={(value) => updateFilter("txType", value)}>
-                <SelectTrigger>
+                <SelectTrigger className=" text-white focus:bg-white focus:text-black data-[state=open]:bg-white data-[state=open]:text-black">
                   <SelectValue placeholder="All types" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-black text-gray-200">
                   <SelectItem value="all">All Types</SelectItem>
                   <SelectItem value="token_transfer">Token Transfer</SelectItem>
                   <SelectItem value="contract_call">Contract Call</SelectItem>
@@ -120,51 +119,48 @@ export function TransactionFiltersComponent({
                 </SelectContent>
               </Select>
             </div>
-
             {/* Status Filter */}
             <div className="space-y-2">
               <Label htmlFor="status" className="text-sm">
                 Status
               </Label>
               <Select value={filters.status} onValueChange={(value) => updateFilter("status", value)}>
-                <SelectTrigger>
+                <SelectTrigger className=" text-white focus:bg-white focus:text-black data-[state=open]:bg-white data-[state=open]:text-black">
                   <SelectValue placeholder="All statuses" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-black text-gray-200">
                   <SelectItem value="all">All Statuses</SelectItem>
                   <SelectItem value="success">Success</SelectItem>
                   <SelectItem value="failed">Failed</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-
             {/* Sort By */}
             <div className="space-y-2">
               <Label htmlFor="sortBy" className="text-sm">
                 Sort By
               </Label>
               <Select value={filters.sortBy} onValueChange={(value) => updateFilter("sortBy", value)}>
-                <SelectTrigger>
+                <SelectTrigger className=" text-white focus:bg-white focus:text-black data-[state=open]:bg-white data-[state=open]:text-black">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-black text-gray-200">
                   <SelectItem value="block_height">Block Height</SelectItem>
                   <SelectItem value="block_time">Date</SelectItem>
                   <SelectItem value="amount">Amount</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-
             {/* Sort Order */}
             <div className="space-y-2">
               <Label htmlFor="sortOrder" className="text-sm">
                 Sort Order
               </Label>
               <Select value={filters.sortOrder} onValueChange={(value) => updateFilter("sortOrder", value)}>
-                <SelectTrigger>
+                <SelectTrigger className=" text-white focus:bg-white focus:text-black data-[state=open]:bg-white data-[state=open]:text-black">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-black text-gray-200">
                   <SelectItem value="desc">
                     <div className="flex items-center gap-2">
                       <SortDesc className="h-4 w-4" />
@@ -181,7 +177,6 @@ export function TransactionFiltersComponent({
               </Select>
             </div>
           </div>
-
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Date From */}
             <div className="space-y-2">
@@ -195,7 +190,6 @@ export function TransactionFiltersComponent({
                 onChange={(e) => updateFilter("dateFrom", e.target.value)}
               />
             </div>
-
             {/* Date To */}
             <div className="space-y-2">
               <Label htmlFor="dateTo" className="text-sm">
@@ -208,7 +202,6 @@ export function TransactionFiltersComponent({
                 onChange={(e) => updateFilter("dateTo", e.target.value)}
               />
             </div>
-
             {/* Min Amount */}
             <div className="space-y-2">
               <Label htmlFor="minAmount" className="text-sm">
@@ -223,7 +216,6 @@ export function TransactionFiltersComponent({
                 onChange={(e) => updateFilter("minAmount", e.target.value)}
               />
             </div>
-
             {/* Max Amount */}
             <div className="space-y-2">
               <Label htmlFor="maxAmount" className="text-sm">
@@ -239,7 +231,6 @@ export function TransactionFiltersComponent({
               />
             </div>
           </div>
-
           {hasActiveFilters && (
             <div className="flex justify-end">
               <Button variant="outline" onClick={onReset} className="flex items-center gap-2 bg-transparent">
@@ -251,5 +242,6 @@ export function TransactionFiltersComponent({
         </CardContent>
       )}
     </Card>
-  )
+  );
 }
+

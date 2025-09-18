@@ -1,30 +1,37 @@
-import { TransactionsList } from "@/components/txns-list"
-import { fetchAddressTransactions } from "@/lib/fetch-address-transactions"
-import { AddressBalance } from "../../components/address-balance"
-import { ExternalLinkIcon } from "lucide-react"
-import Link from "next/link"
+import { fetchAddressTransactions } from "@/lib/fetch-address-transactions";
+import { AddressBalance } from "../../components/address-balance";
+import { TransactionsList } from "@/components/txns-list";
+import { ExternalLinkIcon } from "lucide-react";
+import Link from "next/link";
+import { Suspense } from "react";
 
 export default async function Activity({
   params,
   searchParams,
 }: {
-  params: Promise<{ address: string }>
-  searchParams: Promise<{ network?: "mainnet" | "testnet" }>
+  params: Promise<{ address: string }>;
+  searchParams: Promise<{ network?: "mainnet" | "testnet" }>;
 }) {
-  // params contains parameters we can parse from the URL Route
-  const { address } = await params
-  const { network = "mainnet" } = await searchParams
+  const { address } = await params;
+  const { network = "mainnet" } = await searchParams;
 
-  // Once we know the address, we fetch the initial 20 transactions
-  const initialTransactions = await fetchAddressTransactions({ address, network })
+  let initialTransactions;
+  let error = null;
+
+  try {
+    initialTransactions = await fetchAddressTransactions({ address, network });
+  } catch (err) {
+    console.error("Failed to fetch transactions:", err);
+    error = "Unable to load transaction history. Please try again.";
+  }
 
   const explorerUrl =
     network === "testnet"
       ? `https://explorer.hiro.so/address/${address}?chain=testnet`
-      : `https://explorer.hiro.so/address/${address}`
+      : `https://explorer.hiro.so/address/${address}`;
 
   return (
-    <main className="flex h-[100vh-4rem] flex-col p-4 md:p-8 gap-6 md:gap-8">
+    <main className="flex h-[calc(100vh-4rem)] flex-col p-4 md:p-8 gap-6 md:gap-8">
       <div className="flex flex-col sm:flex-row sm:items-center gap-4">
         <h1 className="text-2xl md:text-3xl font-bold break-all">{address}</h1>
         <Link
@@ -40,13 +47,25 @@ export default async function Activity({
 
       <section>
         <h2 className="text-lg md:text-xl font-semibold mb-4">Balance Overview</h2>
-        <AddressBalance address={address} />
+        <Suspense fallback={<div>Loading balance...</div>}>
+          <AddressBalance address={address} />
+        </Suspense>
       </section>
 
       <section>
         <h2 className="text-lg md:text-xl font-semibold mb-4">Transaction History</h2>
-        <TransactionsList address={address} transactions={initialTransactions} />
+        {error ? (
+          <div className="text-red-500 bg-white p-4 rounded-md">Error: {error}</div>
+        ) : !initialTransactions || initialTransactions.results.length === 0 ? (
+          <div className="text-gray-500 bg-white p-4 rounded-md">
+            No transactions found for this address on {network}.
+          </div>
+        ) : (
+          <Suspense fallback={<div className="bg-white p-4 rounded-md">Loading transactions...</div>}>
+            <TransactionsList address={address} transactions={initialTransactions} network={network} />
+          </Suspense>
+        )}
       </section>
     </main>
-  )
+  );
 }
