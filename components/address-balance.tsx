@@ -138,6 +138,7 @@ export function AddressBalance({ address }: AddressBalanceProps) {
                 </div>
               ))}
             </div>
+            <div></div>
           </CardContent>
         </Card>
       )}
