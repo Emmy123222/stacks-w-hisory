@@ -20,5 +20,6 @@ export default function Home() {
       ? userData.profile.stxAddress.mainnet
       : userData.profile.stxAddress.testnet;
 
-  redirect(`/${address}`);
+  const query = network === "testnet" ? "?network=testnet" : "";
+  redirect(`/${address}${query}`);
 }

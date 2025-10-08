@@ -12,8 +12,9 @@ interface TransactionsListProps {
   transactions: FetchAddressTransactionsResponse;
   network: "mainnet" | "testnet"; // Now required
 }
+
 export function TransactionsList({ address, transactions, network: propNetwork }: TransactionsListProps) {
-  const { network: contextNetwork } = useNetwork();
+  const { network: contextNetwork, getApiUrl } = useNetwork();
   const network = propNetwork || contextNetwork; // Prefer prop network, fallback to context
   const [allTxns, setAllTxns] = useState(transactions);
   const [selectedTransaction, setSelectedTransaction] = useState<
@@ -30,6 +31,10 @@ export function TransactionsList({ address, transactions, network: propNetwork }
     sortBy: "block_time",
     sortOrder: "desc",
   });
+
+  const [txIdInput, setTxIdInput] = useState("");
+  const [openByIdLoading, setOpenByIdLoading] = useState(false);
+  const [openByIdError, setOpenByIdError] = useState<string | null>(null);
 
   // Load another 20 transactions
   async function loadMoreTxns() {
@@ -58,6 +63,41 @@ export function TransactionsList({ address, transactions, network: propNetwork }
     setIsModalOpen(false);
     setSelectedTransaction(null);
   };
+
+  async function openByTxId() {
+    if (!txIdInput) return;
+    setOpenByIdError(null);
+    setOpenByIdLoading(true);
+    try {
+      const url = `${getApiUrl()}/extended/v1/tx/${txIdInput}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data: any = await res.json();
+      const wrapped: any = {
+        tx: {
+          tx_id: data.tx_id,
+          tx_status: data.tx_status ?? "pending",
+          tx_type: data.tx_type ?? "token_transfer",
+          nonce: data.nonce ?? 0,
+          block_height: data.block_height ?? 0,
+          block_time: data.block_time ?? Math.floor(Date.now() / 1000),
+          block_hash: data.block_hash ?? "",
+          parent_block_hash: data.parent_block_hash ?? "",
+          token_transfer: data.token_transfer ?? { amount: "0", recipient_address: "" },
+          contract_call: data.contract_call ?? { contract_id: data.contract_id ?? "", function_name: data.function_name ?? "" },
+          smart_contract: data.smart_contract ?? { contract_id: data.contract_id ?? "", clarity_version: data.clarity_version ?? 3 },
+          sender_address: data.sender_address ?? address,
+        },
+        stx_sent: "0",
+        stx_received: "0",
+      };
+      openTransactionModal(wrapped);
+    } catch (e: any) {
+      setOpenByIdError(e?.message ?? "Failed to fetch tx");
+    } finally {
+      setOpenByIdLoading(false);
+    }
+  }
 
   // Filter and sort transactions
   const filteredAndSortedTxns = useMemo(() => {
@@ -140,6 +180,26 @@ export function TransactionsList({ address, transactions, network: propNetwork }
 
   return (
     <div className="flex flex-col gap-4">
+      <div className="flex items-center gap-2">
+        <input
+          value={txIdInput}
+          onChange={(e) => setTxIdInput(e.target.value)}
+          placeholder="Paste a txid to open"
+          className="border px-2 py-1 rounded w-full max-w-xl"
+        />
+        <button
+          type="button"
+          className="px-3 py-2 rounded bg-black text-white disabled:opacity-60"
+          onClick={openByTxId}
+          disabled={!txIdInput || openByIdLoading}
+        >
+          {openByIdLoading ? "Opening..." : "Open by TxID"}
+        </button>
+      </div>
+      {openByIdError && (
+        <div className="text-sm text-red-600">{openByIdError}</div>
+      )}
+
       <TransactionFiltersComponent
         filters={filters}
         onFiltersChange={setFilters}

@@ -4,7 +4,7 @@ import { STACKS_MAINNET, STACKS_TESTNET, StacksNetwork } from "@stacks/network";
 
 export type NetworkKey = "mainnet" | "testnet";
 
-function getContractForNetwork(network: NetworkKey): { address: string; name: string } | null {
+export function getContractForNetwork(network: NetworkKey): { address: string; name: string } | null {
   const id = network === "mainnet"
     ? process.env.NEXT_PUBLIC_TX_CATEGORIES_CONTRACT_MAINNET
     : process.env.NEXT_PUBLIC_TX_CATEGORIES_CONTRACT_TESTNET;
@@ -47,10 +47,22 @@ export async function getCategory(params: {
     network,
     senderAddress: params.owner,
   });
-  const json = cvToJSON(result);
-  if (json.type === "optional" && json.value && json.value.type === "tuple") {
-    const cat = (json.value as any).data?.category;
-    if (cat && cat.type === "string-utf8") return cat.value as string;
+  const json: any = cvToJSON(result);
+  // Handle different cvToJSON optional shapes across versions
+  // Possible variants: {type: 'optional', value: {type:'tuple', data:{category:{type:'string-utf8', value:'...'}}}}
+  // or {type: 'optionalSome', value:{type:'tuple', value:{category:{type:'string-utf8', value:'...'}}}}
+  // or {type: 'some', value:{...}} / {type: 'none'}
+  const t = json?.type;
+  if (!t) return null;
+  const isNone = t === "none" || t === "optionalNone" || (t === "optional" && json.value == null);
+  if (isNone) return null;
+
+  const optVal = json.value ?? json; // in case type is 'some' and value sits at json.value
+  const tuple = optVal?.value ?? optVal?.data ?? optVal; // cover {value:{}} or {data:{}}
+  const categoryNode = tuple?.category ?? tuple?.data?.category;
+  const catValue = categoryNode?.value ?? categoryNode; // some versions directly return string
+  if (categoryNode && (categoryNode.type === "string-utf8" || typeof catValue === "string")) {
+    return (categoryNode.type ? categoryNode.value : catValue) as string;
   }
   return null;
 }

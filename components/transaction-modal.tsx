@@ -26,10 +26,11 @@ export function TransactionModal({ transaction, isOpen, onClose }: TransactionMo
   const [category, setCategoryLocal] = useState<string>("")
   const [loadingCategory, setLoadingCategory] = useState<boolean>(false)
   const [savingCategory, setSavingCategory] = useState<boolean>(false)
+  const [testReading, setTestReading] = useState<boolean>(false)
+  const [testReadValue, setTestReadValue] = useState<string | null>(null)
+  const [testReadError, setTestReadError] = useState<string | null>(null)
   const { userData, connectWallet, network } = useStacks()
   const { getApiUrl } = useNetwork()
-
-  if (!transaction) return null
 
   const copyToClipboard = async (text: string, field: string) => {
     try {
@@ -39,8 +40,28 @@ export function TransactionModal({ transaction, isOpen, onClose }: TransactionMo
     } catch (err) {
       console.error("Failed to copy:", err)
     }
-
   }
+
+  const handleTestRead = async () => {
+    if (!transaction || !ownerAddress) return
+    try {
+      setTestReadError(null)
+      setTestReadValue(null)
+      setTestReading(true)
+      const val = await getCategory({
+        owner: ownerAddress,
+        txidHex: transaction.tx.tx_id,
+        network,
+        apiUrl: getApiUrl(),
+      })
+      setTestReadValue(val ?? null)
+    } catch (e: any) {
+      setTestReadError(e?.message ?? 'Failed to read')
+    } finally {
+      setTestReading(false)
+    }
+  }
+
 
   const handleSaveCategory = async () => {
     if (!transaction || !category) return
@@ -126,6 +147,8 @@ export function TransactionModal({ transaction, isOpen, onClose }: TransactionMo
         return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
     }
   }
+
+  if (!transaction) return null
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -217,7 +240,20 @@ export function TransactionModal({ transaction, isOpen, onClose }: TransactionMo
                   <Button onClick={handleSaveCategory} disabled={savingCategory || loadingCategory || !category}>
                     {savingCategory ? "Waiting for wallet..." : category ? `Save "${category}"` : "Select category"}
                   </Button>
+                  <Button variant="outline" onClick={handleTestRead} disabled={testReading || !ownerAddress}>
+                    {testReading ? "Reading..." : "Test read"}
+                  </Button>
                 </div>
+                {(testReadValue !== null || testReadError) && (
+                  <div className="text-xs text-muted-foreground">
+                    <span className="font-medium">Read result:</span>{" "}
+                    {testReadError ? (
+                      <span className="text-red-600">{testReadError}</span>
+                    ) : (
+                      <code>{testReadValue ?? "(none)"}</code>
+                    )}
+                  </div>
+                )}
               </>
             )}
           </CardContent>

@@ -9,11 +9,11 @@ export default async function Activity({
   params,
   searchParams,
 }: {
-  params: Promise<{ address: string }>;
-  searchParams: Promise<{ network?: "mainnet" | "testnet" }>;
+  params: { address: string };
+  searchParams: { network?: "mainnet" | "testnet" };
 }) {
-  const { address } = await params;
-  const { network = "mainnet" } = await searchParams;
+  const { address } = params;
+  const { network = "mainnet" } = searchParams;
 
   let initialTransactions;
   let error = null;
@@ -29,6 +29,11 @@ export default async function Activity({
     network === "testnet"
       ? `https://explorer.hiro.so/address/${address}?chain=testnet`
       : `https://explorer.hiro.so/address/${address}`;
+
+  // Ensure we always pass a safe structure to TransactionsList so the "Open by TxID" input is available
+  const transactionsForList =
+    initialTransactions ?? { results: [], limit: 0, offset: 0, total: 0 } as any;
+  const isEmpty = !transactionsForList || transactionsForList.results.length === 0;
 
   return (
     <main className="flex h-[calc(100vh-4rem)] flex-col p-4 md:p-8 gap-6 md:gap-8">
@@ -56,16 +61,20 @@ export default async function Activity({
         <h2 className="text-lg md:text-xl font-semibold mb-4">Transaction History</h2>
         {error ? (
           <div className="text-red-500 bg-white p-4 rounded-md">Error: {error}</div>
-        ) : !initialTransactions || initialTransactions.results.length === 0 ? (
-          <div className="text-gray-500 bg-white p-4 rounded-md">
-            No transactions found for this address on {network}.
-          </div>
         ) : (
-          <Suspense fallback={<div className="bg-white p-4 rounded-md">Loading transactions...</div>}>
-            <TransactionsList address={address} transactions={initialTransactions} network={network} />
-          </Suspense>
+          <>
+            {isEmpty && (
+              <div className="text-gray-500 bg-white p-4 rounded-md mb-3">
+                No transactions found for this address on {network}. You can open a transaction directly by TxID below.
+              </div>
+            )}
+            <Suspense fallback={<div className="bg-white p-4 rounded-md">Loading transactions...</div>}>
+              <TransactionsList address={address} transactions={transactionsForList} network={network} />
+            </Suspense>
+          </>
         )}
       </section>
     </main>
   );
 }
+      
