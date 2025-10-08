@@ -5,10 +5,14 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Copy, ExternalLink, Clock, Hash, User, Blocks, Coins } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import type { FetchAddressTransactionsResponse } from "@/lib/fetch-address-transactions"
 import { abbreviateTxnId } from "@/lib/stx-utils"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useStacks } from "@/hooks/use-stacks"
+import { useNetwork } from "@/contexts/network-context"
+import { getCategory, setCategory } from "@/lib/tx-categories"
 
 interface TransactionModalProps {
   transaction: FetchAddressTransactionsResponse["results"][number] | null
@@ -18,6 +22,12 @@ interface TransactionModalProps {
 
 export function TransactionModal({ transaction, isOpen, onClose }: TransactionModalProps) {
   const [copiedField, setCopiedField] = useState<string | null>(null)
+  
+  const [category, setCategoryLocal] = useState<string>("")
+  const [loadingCategory, setLoadingCategory] = useState<boolean>(false)
+  const [savingCategory, setSavingCategory] = useState<boolean>(false)
+  const { userData, connectWallet, network } = useStacks()
+  const { getApiUrl } = useNetwork()
 
   if (!transaction) return null
 
@@ -29,7 +39,62 @@ export function TransactionModal({ transaction, isOpen, onClose }: TransactionMo
     } catch (err) {
       console.error("Failed to copy:", err)
     }
+
   }
+
+  const handleSaveCategory = async () => {
+    if (!transaction || !category) return
+    try {
+      setSavingCategory(true)
+      await setCategory({
+        txidHex: transaction.tx.tx_id,
+        category,
+        network,
+        apiUrl: getApiUrl(),
+        onFinish: () => setSavingCategory(false),
+        onCancel: () => setSavingCategory(false),
+      })
+    } catch (e) {
+      setSavingCategory(false)
+    }
+  }
+  const ownerAddress = useMemo(() => {
+    if (!userData) return null
+    return network === "mainnet" ? userData.profile.stxAddress.mainnet : userData.profile.stxAddress.testnet
+  }, [userData, network])
+
+  
+
+  // Load category
+  useEffect(() => {
+    let cancelled = false
+    async function fetchCategory() {
+      if (!isOpen || !transaction || !ownerAddress) {
+        setCategoryLocal("")
+        return
+      }
+      try {
+        setLoadingCategory(true)
+        const existing = await getCategory({
+          owner: ownerAddress,
+          txidHex: transaction.tx.tx_id,
+          network,
+          apiUrl: getApiUrl(),
+        })
+        if (!cancelled) setCategoryLocal(existing ?? "")
+      } catch (e) {
+        if (!cancelled) setCategoryLocal("")
+      } finally {
+        if (!cancelled) setLoadingCategory(false)
+      }
+    }
+    fetchCategory()
+    return () => {
+      cancelled = true
+    }
+  }, [isOpen, transaction?.tx.tx_id, ownerAddress, network, getApiUrl])
+
+  
 
   const formatDate = (timestamp: number) => {
     return new Date(timestamp * 1000).toLocaleString()
@@ -120,6 +185,43 @@ export function TransactionModal({ transaction, isOpen, onClose }: TransactionMo
               </div>
             </CardContent>
           </Card>
+
+        {/* Category */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base md:text-lg">Transaction Category</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {!ownerAddress ? (
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm text-muted-foreground">Connect your wallet to categorize this transaction.</span>
+                <Button onClick={connectWallet} variant="default">Connect Wallet</Button>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center gap-3">
+                  <div className="min-w-56">
+                    <Select value={category} onValueChange={setCategoryLocal}>
+                      <SelectTrigger className="w-56">
+                        <SelectValue placeholder={loadingCategory ? "Loading..." : "Select a category"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Income">Income</SelectItem>
+                        <SelectItem value="Expense">Expense</SelectItem>
+                        <SelectItem value="Transfer">Transfer</SelectItem>
+                        <SelectItem value="Investment">Investment</SelectItem>
+                        <SelectItem value="Other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button onClick={handleSaveCategory} disabled={savingCategory || loadingCategory || !category}>
+                    {savingCategory ? "Waiting for wallet..." : category ? `Save "${category}"` : "Select category"}
+                  </Button>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
 
           {/* Block Information */}
           <Card>
@@ -350,27 +452,29 @@ export function TransactionModal({ transaction, isOpen, onClose }: TransactionMo
             </Card>
           )}
 
-          {/* External Links */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base md:text-lg">External Links</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex gap-2">
-                <Link
-                  href={`https://explorer.hiro.so/txid/${transaction.tx.tx_id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <Button variant="outline" className="flex items-center gap-2 text-sm bg-transparent">
-                    <ExternalLink className="h-4 w-4" />
-                    <span className="hidden sm:inline">View on Hiro Explorer</span>
-                    <span className="sm:hidden">Hiro Explorer</span>
-                  </Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
+        
+
+        {/* External Links */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base md:text-lg">External Links</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex gap-2">
+              <Link
+                href={`https://explorer.hiro.so/txid/${transaction.tx.tx_id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Button variant="outline" className="flex items-center gap-2 text-sm bg-transparent">
+                  <ExternalLink className="h-4 w-4" />
+                  <span className="hidden sm:inline">View on Hiro Explorer</span>
+                  <span className="sm:hidden">Hiro Explorer</span>
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
         </div>
       </DialogContent>
     </Dialog>
